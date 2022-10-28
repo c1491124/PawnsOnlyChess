@@ -9,7 +9,9 @@ val colorMap = mapOf(0 to " W ", 1 to " B ")
 lateinit var firstPlayerName: String
 lateinit var secondPlayerName: String
 var ifEnPassant = false
-val pawnPosition = listOf(mutableListOf<String>("01"), mutableListOf<String>())
+val pawnPosition = listOf(MutableList(8) { (it.toChar().code + 97).toChar() + "1" },
+    MutableList(8) { (it.toChar().code + 97).toChar() + "7" })
+
 fun main() {
     println(" Pawns-Only Chess")
     initName()
@@ -42,12 +44,12 @@ fun initName() {
 }
 
 data class ParsedCommand(val command: String) {
-    var fileFrom = command[1].code - 48
+    var fileFrom = command[1].code - 48  // '1'.code == 49
     var fileTo = command[3].code - 48
     var fileDiff = fileTo - fileFrom
     var rankFrom = command[0]
     var rankTo = command[2]
-    val rankFromIndex = rankFrom.code - 97
+    val rankFromIndex = rankFrom.code - 97  // 'a'.code == 97
     val rankToIndex = rankTo.code - 97
 }
 
@@ -114,8 +116,8 @@ fun play(name1: String, name2: String) {
         //check move forward
         if (checkMove(parsedCommand, color)) {
             // updating position
-            pawnPosition[color % 2] += "${parsedCommand.rankToIndex}+${parsedCommand.fileTo}"
-            pawnPosition[color % 2] -= "${parsedCommand.rankFromIndex}+${parsedCommand.fileFrom}"
+            pawnPosition[color % 2] += command.substring(0..1)
+            pawnPosition[color % 2] -= command.substring(2..3)
             updateGame(parsedCommand, color % 2)
             lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
             if (checkEndGame(color % 2)) {
@@ -135,14 +137,16 @@ fun play(name1: String, name2: String) {
                     colorMap,
                     lastTurnInfo
                 )
-                //pawnPosition[(color+1) % 2]....
+                //remove the captured pawn via en passant
+                pawnPosition[(color + 1) % 2] -= "${(lastTurnInfo.rankToIndex + 97).toChar()}${lastTurnInfo.fileTo}"
             } else {
                 //normal capture update
                 updateGame(parsedCommand, color % 2)
-                //removePosition
+                //remove opponent's captured pawn
+                pawnPosition[(color + 1) % 2] -= command.substring(2..3)
             }
-            pawnPosition[color % 2] += "${parsedCommand.rankToIndex}+${parsedCommand.fileTo}"
-            pawnPosition[color % 2] -= "${parsedCommand.rankFromIndex}+${parsedCommand.fileFrom}"
+            pawnPosition[color % 2] += command.substring(0..1)
+            pawnPosition[color % 2] -= command.substring(2..3)
             printBoard()
             lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
             if (checkEndGame(color % 2)) {
