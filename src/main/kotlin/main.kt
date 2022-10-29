@@ -9,7 +9,7 @@ val colorMap = mapOf(0 to " W ", 1 to " B ")
 lateinit var firstPlayerName: String
 lateinit var secondPlayerName: String
 var ifEnPassant = false
-val pawnPosition = listOf(MutableList(8) { (it.toChar().code + 97).toChar() + "1" },
+val pawnPosition = listOf(MutableList(8) { (it.toChar().code + 97).toChar() + "2" },
     MutableList(8) { (it.toChar().code + 97).toChar() + "7" })
 
 fun main() {
@@ -76,8 +76,8 @@ fun checkCapture(parsedCommand: ParsedCommand, color: Int, lastTurnInfo: LastTur
         }
         // can not capture our own piece
         if (board[8 - parsedCommand.fileTo][parsedCommand.rankToIndex] == colorMap[color]) {
-            updateTo(parsedCommand.fileTo, parsedCommand.rankFromIndex, colorMap, color)
-            updateFrom(parsedCommand.fileFrom, parsedCommand.rankFromIndex)
+//            updateTo(parsedCommand.fileTo, parsedCommand.rankFromIndex, colorMap, color)
+//            updateFrom(parsedCommand.fileFrom, parsedCommand.rankFromIndex)
             println("Invalid Input")
             return false
         }
@@ -88,6 +88,32 @@ fun checkCapture(parsedCommand: ParsedCommand, color: Int, lastTurnInfo: LastTur
         }
         if (color % 2 == 1 && parsedCommand.fileDiff > 0) {
             println("Invalid Input")
+            return false
+        }
+        //successful capture
+        return true
+    } else {
+        return false
+    }
+}
+
+fun checkCapture2(parsedCommand: ParsedCommand, color: Int, lastTurnInfo: LastTurnInfo): Boolean {
+    if (parsedCommand.fileDiff.absoluteValue == 1 &&
+        (parsedCommand.rankToIndex - parsedCommand.rankFromIndex).absoluteValue == 1
+    ) {
+        // can not capture empty , except  "en passant"
+        if (board[8 - parsedCommand.fileTo][parsedCommand.rankToIndex] == "   ") {
+            return checkEnPassant(lastTurnInfo, parsedCommand.rankToIndex, parsedCommand.fileTo)
+        }
+        // can not capture our own piece
+        if (board[8 - parsedCommand.fileTo][parsedCommand.rankToIndex] == colorMap[color]) {
+            return false
+        }
+        //can only capture forward
+        if (color % 2 == 0 && parsedCommand.fileDiff < 0) {
+            return false
+        }
+        if (color % 2 == 1 && parsedCommand.fileDiff > 0) {
             return false
         }
         //successful capture
@@ -117,13 +143,13 @@ fun play(name1: String, name2: String) {
         //check move forward
         if (checkMove(parsedCommand, color)) {
             // updating position
-            pawnPosition[color % 2] += command.substring(0..1)
-            pawnPosition[color % 2] -= command.substring(2..3)
+            pawnPosition[color % 2] -= command.substring(0..1)
+            pawnPosition[color % 2] += command.substring(2..3)
             updateGame(parsedCommand, color % 2)
-            lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
             if (checkEndGame(color % 2, lastTurnInfo)) {
                 break
             }
+            lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
             color++
             continue
         } else if (checkCapture(parsedCommand, color, lastTurnInfo)) {
@@ -146,13 +172,12 @@ fun play(name1: String, name2: String) {
                 //remove opponent's captured pawn
                 pawnPosition[(color + 1) % 2] -= command.substring(2..3)
             }
-            pawnPosition[color % 2] += command.substring(0..1)
-            pawnPosition[color % 2] -= command.substring(2..3)
-            printBoard()
-            lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
+            pawnPosition[color % 2] -= command.substring(0..1)
+            pawnPosition[color % 2] += command.substring(2..3)
             if (checkEndGame(color % 2, lastTurnInfo)) {
                 break
             }
+            lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
             color++
             ifEnPassant = false
         }
@@ -207,6 +232,53 @@ fun checkMove(parsedCommand: ParsedCommand, color: Int): Boolean {
     return false
 }
 
+fun checkMove2(parsedCommand: ParsedCommand, color: Int): Boolean {
+    // check straight move .
+    if (parsedCommand.rankFrom == parsedCommand.rankTo &&
+        (parsedCommand.fileDiff.absoluteValue == 1 ||
+                parsedCommand.fileDiff.absoluteValue == 2)
+    ) {
+        // You can only command your own pawn
+        if (board[8 - parsedCommand.fileFrom][parsedCommand.rankFromIndex] != colorMap[color % 2]) {
+            // println("No ${colorNameMap[color % 2]} pawn at ${parsedCommand.command.substring(0, 2)}")
+            return false
+        }
+        // Pawns can only step forward
+        if (color % 2 == 0 && parsedCommand.fileDiff < 0) {
+            // println("Invalid Input")
+            return false
+        }
+        if (color % 2 == 1 && parsedCommand.fileDiff > 0) {
+            //  println("Invalid Input")
+            return false
+        }
+        // Pawns can jump if only at the initial position
+        if (parsedCommand.fileDiff.absoluteValue == 2) {
+            if (color % 2 == 0 && parsedCommand.fileFrom != 2) {
+                //  println("Invalid Input")
+                return false
+            }
+            if (color % 2 == 1 && parsedCommand.fileFrom != 7) {
+                //  println("Invalid Input")
+                return false
+            }
+        }
+        if (parsedCommand.rankFrom == parsedCommand.rankTo &&
+            (parsedCommand.fileDiff == 0) &&
+            board[8 - parsedCommand.fileFrom][parsedCommand.rankFromIndex] == "   "
+        ) {
+            // println("No ${colorNameMap[color % 2]} pawn at ${parsedCommand.rankFrom}${parsedCommand.fileFrom}")
+            return false
+        }
+        if (board[8 - parsedCommand.fileTo][parsedCommand.rankFromIndex] != "   ") {
+            //  println("Invalid Input")
+            return false
+        }
+        return true
+    }
+    return false
+}
+
 fun checkWin(color: Int): Boolean {
     val colorMap = mapOf(0 to " W ", 1 to " B ")
     if (board[0].contains(" W ") || board[7].contains(" B ")) {
@@ -221,7 +293,7 @@ fun checkWin(color: Int): Boolean {
 fun checkDraw(color: Int, lastTurnInfo: LastTurnInfo): Boolean {
     val ifMarch = pawnPosition[color].any { tryMarch(it, color) }
     val ifCapture = pawnPosition[color].any { tryCapture(it, color, lastTurnInfo) }
-    return ifMarch || ifCapture
+    return !(ifMarch || ifCapture)
 }
 
 fun tryCapture(it: String, color: Int, lastTurnInfo: LastTurnInfo): Boolean {
@@ -235,14 +307,10 @@ fun tryCapture(it: String, color: Int, lastTurnInfo: LastTurnInfo): Boolean {
         newCommand2 = newCommand2 + (it[0].code + 1).toChar() + (it[1].code - 1).toChar()
     }
     val ifCapture1 = if (newCommand1.matches("[a-h][1-8][a-h][1-8]".toRegex())) {
-        checkCapture(ParsedCommand(newCommand1), color, lastTurnInfo)
+        checkCapture2(ParsedCommand(newCommand1), color, lastTurnInfo)
     } else false
     val ifCapture2 = if (newCommand2.matches("[a-h][1-8][a-h][1-8]".toRegex())) {
-        checkCapture(
-            ParsedCommand(newCommand2),
-            color,
-            lastTurnInfo
-        )
+        checkCapture2(ParsedCommand(newCommand2), color, lastTurnInfo)
     } else false
     return ifCapture1 || ifCapture2
 }
@@ -251,31 +319,33 @@ fun tryMarch(it: String, color: Int): Boolean {
     // try march one step
     val stepTo = it[1].toString().toInt()
     var newCommand1 = ""
-    // process new comman from pawn position e.g."a2"
+    // process new command from pawn position e.g."a2"
     when (color) {
         0 -> newCommand1 = it + it[0] + (stepTo + 1).toString()
         1 -> newCommand1 = it + it[0] + (stepTo - 1).toString()
     }
-    val ifMarch1 = checkMove(ParsedCommand(newCommand1), color)
+    val ifMarch1 = checkMove2(ParsedCommand(newCommand1), color)
     // try to jump
     var newCommand2 = ""
     when (color) {
         0 -> newCommand2 = it + it[0] + (stepTo + 2).toString()
         1 -> newCommand2 = it + it[0] + (stepTo - 2).toString()
     }
-    val ifMarch2 = checkMove(ParsedCommand(newCommand2), color)
+    val ifMarch2 = checkMove2(ParsedCommand(newCommand2), color)
     return ifMarch1 || ifMarch2
 }
 
 fun checkEndGame(color: Int, lastTurnInfo: LastTurnInfo): Boolean {
-    if (checkDraw(color, lastTurnInfo)) {
-        println("Stalemate!")
-        println("Bye!")
-        return true
-    }
+//    println(pawnPosition[color])
     if (checkWin(color)) {
         val colorNameMap = mapOf(0 to "white", 1 to "black")
         println("${colorNameMap[color % 2]?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }} Wins!")
+        println("Bye!")
+        return true
+    }
+    //check if opponent can move , thus color + 1
+    if (checkDraw((color + 1) % 2, lastTurnInfo)) {
+        println("Stalemate!")
         println("Bye!")
         return true
     }
