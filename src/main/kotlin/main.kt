@@ -70,6 +70,7 @@ fun checkCapture(parsedCommand: ParsedCommand, color: Int, lastTurnInfo: LastTur
                 true
             } else {
                 println("Invalid Input")
+                ifEnPassant = false
                 false
             }
         }
@@ -120,7 +121,7 @@ fun play(name1: String, name2: String) {
             pawnPosition[color % 2] -= command.substring(2..3)
             updateGame(parsedCommand, color % 2)
             lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
-            if (checkEndGame(color % 2)) {
+            if (checkEndGame(color % 2, lastTurnInfo)) {
                 break
             }
             color++
@@ -149,7 +150,7 @@ fun play(name1: String, name2: String) {
             pawnPosition[color % 2] -= command.substring(2..3)
             printBoard()
             lastTurnInfo = LastTurnInfo(color, parsedCommand.fileFrom, parsedCommand.fileTo, parsedCommand.rankToIndex)
-            if (checkEndGame(color % 2)) {
+            if (checkEndGame(color % 2, lastTurnInfo)) {
                 break
             }
             color++
@@ -217,12 +218,57 @@ fun checkWin(color: Int): Boolean {
     return false
 }
 
-fun checkDraw(color: Int): Boolean {
-    return false
+fun checkDraw(color: Int, lastTurnInfo: LastTurnInfo): Boolean {
+    val ifMarch = pawnPosition[color].any { tryMarch(it, color) }
+    val ifCapture = pawnPosition[color].any { tryCapture(it, color, lastTurnInfo) }
+    return ifMarch || ifCapture
 }
 
-fun checkEndGame(color: Int): Boolean {
-    if (checkDraw(color)) {
+fun tryCapture(it: String, color: Int, lastTurnInfo: LastTurnInfo): Boolean {
+    var newCommand1 = it
+    var newCommand2 = it
+    if (color == 0) {
+        newCommand1 = newCommand1 + (it[0].code - 1).toChar() + (it[1].code + 1).toChar()
+        newCommand2 = newCommand2 + (it[0].code + 1).toChar() + (it[1].code + 1).toChar()
+    } else {
+        newCommand1 = newCommand1 + (it[0].code - 1).toChar() + (it[1].code - 1).toChar()
+        newCommand2 = newCommand2 + (it[0].code + 1).toChar() + (it[1].code - 1).toChar()
+    }
+    val ifCapture1 = if (newCommand1.matches("[a-h][1-8][a-h][1-8]".toRegex())) {
+        checkCapture(ParsedCommand(newCommand1), color, lastTurnInfo)
+    } else false
+    val ifCapture2 = if (newCommand2.matches("[a-h][1-8][a-h][1-8]".toRegex())) {
+        checkCapture(
+            ParsedCommand(newCommand2),
+            color,
+            lastTurnInfo
+        )
+    } else false
+    return ifCapture1 || ifCapture2
+}
+
+fun tryMarch(it: String, color: Int): Boolean {
+    // try march one step
+    val stepTo = it[1].toString().toInt()
+    var newCommand1 = ""
+    // process new comman from pawn position e.g."a2"
+    when (color) {
+        0 -> newCommand1 = it + it[0] + (stepTo + 1).toString()
+        1 -> newCommand1 = it + it[0] + (stepTo - 1).toString()
+    }
+    val ifMarch1 = checkMove(ParsedCommand(newCommand1), color)
+    // try to jump
+    var newCommand2 = ""
+    when (color) {
+        0 -> newCommand2 = it + it[0] + (stepTo + 2).toString()
+        1 -> newCommand2 = it + it[0] + (stepTo - 2).toString()
+    }
+    val ifMarch2 = checkMove(ParsedCommand(newCommand2), color)
+    return ifMarch1 || ifMarch2
+}
+
+fun checkEndGame(color: Int, lastTurnInfo: LastTurnInfo): Boolean {
+    if (checkDraw(color, lastTurnInfo)) {
         println("Stalemate!")
         println("Bye!")
         return true
